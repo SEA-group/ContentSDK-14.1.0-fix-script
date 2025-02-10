@@ -167,12 +167,12 @@ for indMod = 1: size(listMod, 1)
         isInNode = 0;
         lineVisualBak = fgetl(fileVisualBak);
         while lineVisualBak ~= -1
-            if ~isInNode && strcmp(lineVisualBak, '	<node>')
+            if ~isInNode && (strcmp(lineVisualBak, '	<node>') || strcmp(lineVisualBak, '    <node>'))
                 isInNode = 1;
             end
             if isInNode
                 fprintf(fileVisualNeo, '\t%s\r\n', lineVisualBak);
-                if strcmp(lineVisualBak, '	</node>')
+                if strcmp(lineVisualBak, '	</node>') || strcmp(lineVisualBak, '    </node>')
                     break
                 end
             end
@@ -191,12 +191,12 @@ for indMod = 1: size(listMod, 1)
         isInBoundingBox = 0;
         lineVisualBak = fgetl(fileVisualBak);
         while lineVisualBak ~= -1
-            if ~isInBoundingBox && strcmp(lineVisualBak, '	<boundingBox>')
+            if ~isInBoundingBox && (strcmp(lineVisualBak, '	<boundingBox>') || strcmp(lineVisualBak, '    <boundingBox>'))
                 isInBoundingBox = 1;
             end
             if isInBoundingBox
                 fprintf(fileVisualNeo, '%s\r\n', lineVisualBak);
-                if strcmp(lineVisualBak, '	</boundingBox>')
+                if strcmp(lineVisualBak, '	</boundingBox>') || strcmp(lineVisualBak, '    </boundingBox>')
                     break
                 end
             end
@@ -482,7 +482,7 @@ function listNodes = parseSkeleton(textVisual)
     isInNode = 0;
     indLine = 1;
     while indLine < size(textVisual, 1)
-        if ~isInNode && strcmp(char(textVisual(indLine)), '	<node>')
+        if ~isInNode && (strcmp(char(textVisual(indLine)), '	<node>') || strcmp(char(textVisual(indLine)), '    <node>'))
             isInNode = 1;
         end
         if isInNode
@@ -492,7 +492,7 @@ function listNodes = parseSkeleton(textVisual)
                 match = regexp(textVisual(indLine), labelPattern, 'tokens');
                 listNodes(nodeCount) = match{1}{1};
             end
-            if strcmp(textVisual(indLine), '	</node>')
+            if strcmp(char(textVisual(indLine)), '	</node>') || strcmp(char(textVisual(indLine)), '    </node>')
                 isInNode = 0;
                 break
             end
