@@ -4,8 +4,8 @@ import shutil
 from typing import List, Dict, Any
 
 # Parameters
-keep_legacy_files = 1
-migrate_animation = 1
+keep_legacy_files = True
+migrate_animation = True
 underwater_model = 'false'
 abovewater_model = 'true'
 
@@ -33,7 +33,7 @@ def parse_model(text_model: List[str], lod: int, mod_root: str) -> Dict[str, Any
             if match:
                 data_model['castsShadow'] = match.group(1)
         elif '<parent>' in line:
-            match = re.search(r'<parent>\s*([a-zA-Z0-9_/-]+)\s*</parent>', line)
+            match = re.search(r'<parent>\s*([a-zA-Z0-9_/.() -]+)\s*</parent>', line)
             if match:
                 data_model['parent'] = match.group(1)
         elif '<extent>' in line:
@@ -41,7 +41,7 @@ def parse_model(text_model: List[str], lod: int, mod_root: str) -> Dict[str, Any
             if match:
                 data_model['extent'] = match.group(1)
         elif '<nodefullVisual>' in line:
-            match = re.search(r'<nodefullVisual>\s*([a-zA-Z0-9_/-]+)\s*</nodefullVisual>', line)
+            match = re.search(r'<nodefullVisual>\s*([a-zA-Z0-9_/.() -]+)\s*</nodefullVisual>', line)
             if match:
                 data_model['visual'] = match.group(1)
         elif '<metaData>' in line:
@@ -98,7 +98,7 @@ def parse_skeleton(text_visual: List[str]) -> List[str]:
                 match = re.search(r'<identifier>\s*([a-zA-Z0-9_ ]+)\s*</identifier>', line)
                 if match:
                     list_nodes.append(match.group(1))
-            if line.strip() == '</node>' and (line.count('\t')==1 or line.count(' ')==4):
+            if re.match(r'^\t</node>$', line) or re.match(r'^ {4}</node>$', line):
                 is_in_node = False
                 break
     return list_nodes
@@ -135,6 +135,17 @@ def parse_render_sets(text_visual: List[str]) -> List[Dict[str, Any]]:
             data_render_sets.append(render_set)
         ind_line += 1
     return data_render_sets
+
+def cleanup():  # by Aslain
+    for root, dirs, files in os.walk('.'):
+        if 'ModsSDK' in root:
+            continue
+        for file in files:
+            if file.endswith(('.modelbak', '.visualbak')):
+                os.remove(os.path.join(root, file))
+        for dir in dirs[:]:
+            if dir == 'lods':
+                shutil.rmtree(os.path.join(root, dir), ignore_errors=True)
 
 def main():
     global log_count
@@ -275,7 +286,7 @@ def main():
                         is_in_node = True
                     if is_in_node:
                         f_visual_neo.write(f'\t{line}')
-                        if line.strip() == '</node>' and (line.count('\t')==1 or line.count(' ')==4):
+                        if re.match(r'^\t</node>$', line) or re.match(r'^ {4}</node>$', line):
                             break
                 f_visual_neo.write('\t</skeleton>\n')
                 f_visual_neo.write('\t<properties>\n')
@@ -422,6 +433,9 @@ def main():
                     f_visual_neo.write('\t\t</lod>\n')
                 f_visual_neo.write('\t</lods>\n')
                 f_visual_neo.write(f'</{data_model_lod0["visualName"]}.visual>\n')
+
+    if not keep_legacy_files:
+        cleanup()
 
     log_file.close()
     print('Routine finished.')
