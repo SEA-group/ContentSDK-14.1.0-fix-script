@@ -13,6 +13,7 @@ keepLegacyFiles = 1;
 migrateAnimation = 1;
 underwaterModel = 'false';
 abovewaterModel = 'true';
+pathModsSDK = '.\ModsSDK';
 
 % Prepare log
 logFile = fopen('xmlRectify.log', 'w');
@@ -124,12 +125,12 @@ for indMod = 1: size(listMod, 1)
 
         % grab animation path from ModsSDK
         if migrateAnimation && dataModelLod0.isAnimated
-            if isempty(dir(['.\ModsSDK\', dataModelLod0.visualShipID, '\', modelType, '\', fileModelLod0_fileName]))
+            if isempty(dir([pathModsSDK, '\', dataModelLod0.visualShipID, '\', modelType, '\', fileModelLod0_fileName]))
                 fprintf(logFile, '%s: Failed to find corresponding SDK file for animation path.\r\n', [fileModelLod0_path, '\', fileModelLod0_fileName]);
                 logCount = logCount + 1;
                 dataModelLod0.isAnimated = -1;
             else
-                textModelSdk = readlines(['.\ModsSDK\', dataModelLod0.visualShipID, '\', modelType, '\', fileModelLod0_fileName]);
+                textModelSdk = readlines([pathModsSDK, '\', dataModelLod0.visualShipID, '\', modelType, '\', fileModelLod0_fileName]);
                 [animSdk, animCountSdk] = parseAnimation(textModelSdk);
                 if animCountSdk == 0
                     fprintf(logFile, '%s: Failed to find animation node in corresponding SDK file.\r\n', [fileModelLod0_path, '\', fileModelLod0_fileName]);
@@ -167,12 +168,12 @@ for indMod = 1: size(listMod, 1)
         isInNode = 0;
         lineVisualBak = fgetl(fileVisualBak);
         while lineVisualBak ~= -1
-            if ~isInNode && (strcmp(lineVisualBak, '	<node>') || strcmp(lineVisualBak, '    <node>'))
+            if ~isInNode && ~isempty(regexp(lineVisualBak, '^(\t|    )<node>', 'once'))
                 isInNode = 1;
             end
             if isInNode
                 fprintf(fileVisualNeo, '\t%s\r\n', lineVisualBak);
-                if strcmp(lineVisualBak, '	</node>') || strcmp(lineVisualBak, '    </node>')
+                if ~isempty(regexp(lineVisualBak, '^(\t|    )</node>', 'once'))
                     break
                 end
             end
@@ -191,12 +192,12 @@ for indMod = 1: size(listMod, 1)
         isInBoundingBox = 0;
         lineVisualBak = fgetl(fileVisualBak);
         while lineVisualBak ~= -1
-            if ~isInBoundingBox && (strcmp(lineVisualBak, '	<boundingBox>') || strcmp(lineVisualBak, '    <boundingBox>'))
+            if ~isInBoundingBox && ~isempty(regexp(lineVisualBak, '^(\t|    )<boundingBox>', 'once'))
                 isInBoundingBox = 1;
             end
             if isInBoundingBox
                 fprintf(fileVisualNeo, '%s\r\n', lineVisualBak);
-                if strcmp(lineVisualBak, '	</boundingBox>') || strcmp(lineVisualBak, '    </boundingBox>')
+                if ~isempty(regexp(lineVisualBak, '^(\t|    )</boundingBox>', 'once'))
                     break
                 end
             end
@@ -205,6 +206,8 @@ for indMod = 1: size(listMod, 1)
         fclose(fileVisualBak);
         clear isInBoundingBox;
         % write renderSets
+        writtenRenderSets = "";
+        writtenRenderSetCount = 0;
         if isPort
             fprintf(fileVisualNeo, '\t<renderSets />\r\n');
         elseif lod4Exist
@@ -233,6 +236,8 @@ for indMod = 1: size(listMod, 1)
                 for indRS = 1: size(renderSetsLod0, 2)
                     fprintf(fileVisualNeo, '\t\t<renderSet>\r\n');
                     fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod0(indRS).name);
+                    writtenRenderSetCount = writtenRenderSetCount + 1;
+                    writtenRenderSets(writtenRenderSetCount) = renderSetsLod0(indRS).name;
                     fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod0(indRS).tawso));
                     fprintf(fileVisualNeo, '\t\t\t<nodes>\r\n');
                     for indRSNode = 1: size(renderSetsLod0(indRS).nodes, 2)
@@ -247,51 +252,72 @@ for indMod = 1: size(listMod, 1)
                 end
                 if lod1Exist    % write lod1 renderSets if lod1 exists
                     for indRS = 1: size(renderSetsLod1, 2)
-                        fprintf(fileVisualNeo, '\t\t<renderSet>\r\n');
-                        fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod1(indRS).name);
-                        fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod1(indRS).tawso));
-                        fprintf(fileVisualNeo, '\t\t\t<nodes>\r\n');
-                        for indRSNode = 1: size(renderSetsLod1(indRS).nodes, 2)
-                            fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod1(indRS).nodes(indRSNode));
-                        end
-                        fprintf(fileVisualNeo, '\t\t\t</nodes>\r\n');
-                        fprintf(fileVisualNeo, '\t\t\t<material>\r\n');
-                        fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod1(indRS).materialIdentifier));
-                        fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod1(indRS).materialMfm));
-                        fprintf(fileVisualNeo, '\t\t\t</material>\r\n');
-                        fprintf(fileVisualNeo, '\t\t</renderSet>\r\n');
-                    end
-                    if lod2Exist    % write lod2 renderSets if lod2 exists
-                        for indRS = 1: size(renderSetsLod2, 2)
+                        if ~max(strcmp(writtenRenderSets, renderSetsLod1(indRS).name))
                             fprintf(fileVisualNeo, '\t\t<renderSet>\r\n');
-                            fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod2(indRS).name);
-                            fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod2(indRS).tawso));
+                            fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod1(indRS).name);
+                            writtenRenderSetCount = writtenRenderSetCount + 1;
+                            writtenRenderSets(writtenRenderSetCount) = renderSetsLod1(indRS).name;
+                            fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod1(indRS).tawso));
                             fprintf(fileVisualNeo, '\t\t\t<nodes>\r\n');
-                            for indRSNode = 1: size(renderSetsLod2(indRS).nodes, 2)
-                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod2(indRS).nodes(indRSNode));
+                            for indRSNode = 1: size(renderSetsLod1(indRS).nodes, 2)
+                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod1(indRS).nodes(indRSNode));
                             end
                             fprintf(fileVisualNeo, '\t\t\t</nodes>\r\n');
                             fprintf(fileVisualNeo, '\t\t\t<material>\r\n');
-                            fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod2(indRS).materialIdentifier));
-                            fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod2(indRS).materialMfm));
+                            fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod1(indRS).materialIdentifier));
+                            fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod1(indRS).materialMfm));
                             fprintf(fileVisualNeo, '\t\t\t</material>\r\n');
                             fprintf(fileVisualNeo, '\t\t</renderSet>\r\n');
+                        else
+                            fprintf(logFile, '%s: Node %s duplicated, ignoring.\r\n', dataModelLod1.visualFile, renderSetsLod1(indRS).name);
+                            logCount = logCount + 1;
                         end
-                        if lod3Exist    % write lod3 renderSets if lod3 exists
-                            for indRS = 1: size(renderSetsLod3, 2)
+                    end
+                    if lod2Exist    % write lod2 renderSets if lod2 exists
+                        for indRS = 1: size(renderSetsLod2, 2)
+                            if ~max(strcmp(writtenRenderSets, renderSetsLod2(indRS).name))
                                 fprintf(fileVisualNeo, '\t\t<renderSet>\r\n');
-                                fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod3(indRS).name);
-                                fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod3(indRS).tawso));
+                                fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod2(indRS).name);
+                                writtenRenderSetCount = writtenRenderSetCount + 1;
+                                writtenRenderSets(writtenRenderSetCount) = renderSetsLod2(indRS).name;
+                                fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod2(indRS).tawso));
                                 fprintf(fileVisualNeo, '\t\t\t<nodes>\r\n');
-                                for indRSNode = 1: size(renderSetsLod3(indRS).nodes, 2)
-                                    fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod3(indRS).nodes(indRSNode));
+                                for indRSNode = 1: size(renderSetsLod2(indRS).nodes, 2)
+                                    fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod2(indRS).nodes(indRSNode));
                                 end
                                 fprintf(fileVisualNeo, '\t\t\t</nodes>\r\n');
                                 fprintf(fileVisualNeo, '\t\t\t<material>\r\n');
-                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod3(indRS).materialIdentifier));
-                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod3(indRS).materialMfm));
+                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod2(indRS).materialIdentifier));
+                                fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod2(indRS).materialMfm));
                                 fprintf(fileVisualNeo, '\t\t\t</material>\r\n');
                                 fprintf(fileVisualNeo, '\t\t</renderSet>\r\n');
+                            else
+                                fprintf(logFile, '%s: Node %s duplicated, ignoring.\r\n', dataModelLod2.visualFile, renderSetsLod2(indRS).name);
+                                logCount = logCount + 1;
+                            end
+                        end
+                        if lod3Exist    % write lod3 renderSets if lod3 exists
+                            for indRS = 1: size(renderSetsLod3, 2)
+                                if ~max(strcmp(writtenRenderSets, renderSetsLod3(indRS).name))
+                                    fprintf(fileVisualNeo, '\t\t<renderSet>\r\n');
+                                    fprintf(fileVisualNeo, '\t\t\t<name>\t%s\t</name>\r\n', renderSetsLod3(indRS).name);
+                                    writtenRenderSetCount = writtenRenderSetCount + 1;
+                                    writtenRenderSets(writtenRenderSetCount) = renderSetsLod3(indRS).name;
+                                    fprintf(fileVisualNeo, '\t\t\t%s\r\n', char(renderSetsLod3(indRS).tawso));
+                                    fprintf(fileVisualNeo, '\t\t\t<nodes>\r\n');
+                                    for indRSNode = 1: size(renderSetsLod3(indRS).nodes, 2)
+                                        fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', renderSetsLod3(indRS).nodes(indRSNode));
+                                    end
+                                    fprintf(fileVisualNeo, '\t\t\t</nodes>\r\n');
+                                    fprintf(fileVisualNeo, '\t\t\t<material>\r\n');
+                                    fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod3(indRS).materialIdentifier));
+                                    fprintf(fileVisualNeo, '\t\t\t\t%s\r\n', char(renderSetsLod3(indRS).materialMfm));
+                                    fprintf(fileVisualNeo, '\t\t\t</material>\r\n');
+                                    fprintf(fileVisualNeo, '\t\t</renderSet>\r\n');
+                                else
+                                    fprintf(logFile, '%s: Node %s duplicated, ignoring.\r\n', dataModelLod3.visualFile, renderSetsLod3(indRS).name);
+                                    logCount = logCount + 1;
+                                end
                             end
                         end
                     end
@@ -369,6 +395,7 @@ for indMod = 1: size(listMod, 1)
 
         clear textModelLod0 textModelLod1 textModelLod2 textModelLod3 textModelLod4;
         clear dataModelLod0 dataModelLod1 dataModelLod2 dataModelLod3 dataModelLod4;
+        clear writtenRenderSets writtenRenderSetCount;
 
     end
 
@@ -405,7 +432,7 @@ function dataModel = parseModel(textModel, lod, modRoot)
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.castsShadow = match{1}{1};
         elseif contains(textModel(indLine), '<parent>')
-            labelPattern = '<parent>\s*([a-zA-Z0-9_/-]+)\s*</parent>';
+            labelPattern = '<parent>\s*([a-zA-Z0-9_/.() -]+)\s*</parent>';
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.parent = match{1}{1};
         elseif contains(textModel(indLine), '<extent>')
@@ -413,7 +440,7 @@ function dataModel = parseModel(textModel, lod, modRoot)
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.extent = match{1}{1};
         elseif contains(textModel(indLine), '<nodefullVisual>')
-            labelPattern = '<nodefullVisual>\s*([a-zA-Z0-9_/-]+)\s*</nodefullVisual>';
+            labelPattern = '<nodefullVisual>\s*([a-zA-Z0-9_/.() -]+)\s*</nodefullVisual>';
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.visual = match{1}{1};
         elseif contains(textModel(indLine), '<metaData>')
@@ -492,7 +519,7 @@ function listNodes = parseSkeleton(textVisual)
                 match = regexp(textVisual(indLine), labelPattern, 'tokens');
                 listNodes(nodeCount) = match{1}{1};
             end
-            if strcmp(char(textVisual(indLine)), '	</node>') || strcmp(char(textVisual(indLine)), '    </node>')
+            if ~isempty(regexp(textVisual(indLine), '^(\t|    )</node>', 'once'))
                 isInNode = 0;
                 break
             end
@@ -508,11 +535,11 @@ function dataRenderSets = parseRenderSets(textVisual)
     countRenderSets = 0;
     indLine = 1;
     while indLine < size(textVisual, 1)
-        if strcmp(textVisual(indLine), '	<renderSet>')
+        if strcmp(strip(textVisual(indLine)), '<renderSet>')
             countRenderSets = countRenderSets + 1;
             countNodes = 0;
             dataRenderSets(countRenderSets).nodes = "";
-            while ~strcmp(textVisual(indLine), '	</renderSet>')
+            while ~strcmp(strip(textVisual(indLine)), '</renderSet>')
                 if contains(textVisual(indLine), '<treatAsWorldSpaceObject>')
                     dataRenderSets(countRenderSets).tawso = strip(textVisual(indLine));
                 elseif contains(textVisual(indLine), '<node>')
