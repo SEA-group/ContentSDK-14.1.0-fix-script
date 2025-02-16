@@ -1,6 +1,8 @@
 import os
 import re
 import shutil
+import stat
+import time
 from typing import List, Dict, Any
 
 # Parameters
@@ -8,6 +10,7 @@ keep_legacy_files = True
 migrate_animation = True
 underwater_model = 'false'
 abovewater_model = 'true'
+path_mods_sdk = r'./ModsSDK'
 
 # Prepare log
 log_file = open('xmlRectify.log', 'w')
@@ -136,16 +139,39 @@ def parse_render_sets(text_visual: List[str]) -> List[Dict[str, Any]]:
         ind_line += 1
     return data_render_sets
 
+def remove_readonly(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
 def cleanup():  # by Aslain
-    for root, dirs, files in os.walk('.'):
+    for root, dirs, files in os.walk('.', topdown=False):
         if 'ModsSDK' in root:
             continue
         for file in files:
-            if file.endswith(('.modelbak', '.visualbak')):
-                os.remove(os.path.join(root, file))
-        for dir in dirs[:]:
+            if file.endswith(('.modelbak', '.visualbak', '.bak',)):
+                file_path = os.path.join(root, file)
+                try:
+                    os.chmod(file_path, stat.S_IWRITE)
+                    os.remove(file_path)
+                    print(f'Removed file: {file_path}')
+                except Exception as e:
+                    print(f'Failed to remove file {file_path}: {e}')
+
+        for dir in dirs:
             if dir == 'lods':
-                shutil.rmtree(os.path.join(root, dir), ignore_errors=True)
+                lods_path = os.path.join(root, dir)
+                for _ in range(3):
+                    try:
+                        shutil.rmtree(lods_path, onerror=remove_readonly)
+                        if not os.path.exists(lods_path):
+                            print(f'Removed directory: {lods_path}')
+                            break
+                    except Exception as e:
+                        print(f'Failed to remove {lods_path}, retrying... ({e})')
+                        time.sleep(1)
+
+                if os.path.exists(lods_path):
+                    print(f'Error: Could not remove {lods_path} after multiple attempts')
 
 def main():
     global log_count
@@ -247,7 +273,7 @@ def main():
 
             # Grab animation path from ModsSDK
             if migrate_animation and data_model_lod0['isAnimated']:
-                sdk_path = os.path.join('.', 'ModsSDK', data_model_lod0['visualShipID'], model_type, file_model_lod0_file_name)
+                sdk_path = os.path.join(path_mods_sdk, data_model_lod0['visualShipID'], model_type, file_model_lod0_file_name)
                 if not os.path.exists(sdk_path):
                     log_file.write(f'{file_model_lod0_path}/{file_model_lod0_file_name}: Failed to find corresponding SDK file for animation path.\n')
                     log_count += 1
