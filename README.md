@@ -5,7 +5,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/SEA-group/ContentSDK-14.1.0-fix-script)
 ![GitHub downloads](https://img.shields.io/github/downloads/SEA-group/ContentSDK-14.1.0-fix-script/total)
 
-A batch fix tool for PnF-typed skin mods in patch 14.1.0.
+A batch fix tool for PnF-type skin mods in patch 14.1.0.
 Originally coded in Matlab, translated to Python by DeepSeek followed by human debug.
 Special thanks to Aslain and the test team of SEA Group for their active contribution.
 
