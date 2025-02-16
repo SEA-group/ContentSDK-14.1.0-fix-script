@@ -20,7 +20,7 @@ It is currently suggested to use the Python version instead of the original Matl
 ## How to use
 1. Put `SEA_xml_rectifier.py` in the repository of your old mods, say `[Repo_Mods]`.
 2. Download the [latest Content SDK](https://github.com/wgmods/ModSDK/tags).
-3. Create a folder `ModsSDK/` in `[Repo_Mods]` (by default), put all related ship SDK inside; or you can create a `ModsSDK/` elsewhere, and assigne the path in the python code line 13.
+3. Create a folder `ModsSDK/` in `[Repo_Mods]` (by default), put all related ship SDK inside; or you can create a `ModsSDK/` elsewhere, and assign the path in the python code line 13.
 4. Run `SEA_xml_rectifier.py`, let the script process your mods.
 5. Test the processed mods in game.
 6. In file explorer, search for all folders `lods/`、all files `*.visualbak` and `*.modelbak`, delete them.
