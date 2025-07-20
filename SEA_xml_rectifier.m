@@ -444,7 +444,7 @@ function dataModel = parseModel(textModel, lod, modRoot)
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.visual = match{1}{1};
         elseif contains(textModel(indLine), '<metaData>')
-            labelPattern = '<metaData>\s*([a-zA-Z0-9_| ]+)\s*</metaData>';
+            labelPattern = '<metaData>\s*([a-zA-Z0-9_.| ]+)\s*</metaData>';
             match = regexp(textModel(indLine), labelPattern, 'tokens');
             dataModel.metaData = match{1}{1};
         elseif contains(textModel(indLine), '<animation>')
